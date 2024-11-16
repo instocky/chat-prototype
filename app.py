@@ -2,30 +2,63 @@ import streamlit as st
 from langchain_groq import ChatGroq
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationChain
+from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 import os
 
-# Загружаем переменные окружения
 load_dotenv()
 
+# Определяем системный промпт
+SYSTEM_PROMPT = """Ты - дружелюбный и умный ассистент. 
+Твои ответы всегда четкие и по делу.
+Если тебе задают технический вопрос - ты даешь примеры кода.
+Если не знаешь ответ - честно говоришь об этом.
+"""
+
+# Шаблон для разговора
+TEMPLATE = """
+{system_prompt}
+
+История разговора:
+{history}
+
+Человек: {input}
+Ассистент:"""
+
 def initialize_chat():
-    # Инициализируем модель
+    # Инициализируем модель (можно менять модель здесь)
     chat = ChatGroq(
         groq_api_key=os.getenv('GROQ_API_KEY'),
-        model_name="mixtral-8x7b-32768"
+        # Варианты моделей:
+        # model_name="mixtral-8x7b-32768"
+        model_name="llama-3.1-70b-versatile",
+        temperature=0.7,  # Настройка креативности (0.0 - 1.0)
+        max_tokens=4096,  # Максимальная длина ответа
+    )
+    
+    # Создаём шаблон промпта
+    prompt = PromptTemplate(
+        input_variables=["history", "input"],
+        partial_variables={"system_prompt": SYSTEM_PROMPT},
+        template=TEMPLATE
     )
     
     # Инициализируем память
-    memory = ConversationBufferMemory()
+    memory = ConversationBufferMemory(
+        human_prefix="Человек",
+        ai_prefix="Ассистент"
+    )
     
-    # Создаём цепочку разговора
+    # Создаём цепочку разговора с новым промптом
     conversation = ConversationChain(
         llm=chat,
         memory=memory,
+        prompt=prompt,
         verbose=True
     )
     
     return conversation
+
 
 def main():
     st.title("🤖 Чат-бот прототип")
